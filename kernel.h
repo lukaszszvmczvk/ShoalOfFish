@@ -8,8 +8,10 @@
 #include <thrust/random.h>
 #include <thrust/sort.h>
 #include <vector>
+#include "fish.h"
 
 namespace Boids
 {
 	void init_simulation(unsigned int N);
+	void update_fishes(Fish* fishes, unsigned int N);
 }

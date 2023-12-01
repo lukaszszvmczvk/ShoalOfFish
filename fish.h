@@ -1,23 +1,42 @@
+#pragma once
+
 #include<GLFW/glfw3.h>
+#include <glm/glm.hpp>
 
 struct Species
 {
-	GLuint size;
-	//color
+public:
+	float size;
+	glm::vec3 color;
+	Species(float size, glm::vec3 color)
+	{
+		this->size = size;
+		this->color = color;
+	}
+	Species()
+	{
+		size = 0.03f;
+		color = glm::vec3(1.0f, 0, 0);
+	}
 };
 
 struct Fish
 {
-	GLint x;
-	GLint y;
-	GLfloat dx;
-	GLfloat dy;
+	float x;
+	float y;
+	float dx;
+	float dy;
 	Species species;
-	Fish(GLint x, GLint y, Species species)
+	Fish(float x, float y, Species species)
 	{
 		this->x = x;
 		this->y = y;
 		this->species = species;
 		dx = dy = 0;
+	}
+	Fish()
+	{
+		x = y = dx = dy = 0;
+		species = Species();
 	}
 };

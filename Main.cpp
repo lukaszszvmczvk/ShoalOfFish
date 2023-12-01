@@ -8,15 +8,45 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include "kernel.h"
+#include "fish.h"
 
 #define WINDOW_WIDTH 1600
 #define WINDOW_HEIGHT 900
-#define N 500
+#define N 100
 
 GLFWwindow* window = nullptr;
 GLuint VAO, VBO;
 Shader shaderProgram;
+Fish fishes[N];
 
+void init_fishes()
+{
+	for (int i = 0; i < N; ++i)
+	{
+		float X = (static_cast<float>(rand() % static_cast<int>(WINDOW_WIDTH)) / WINDOW_WIDTH) * 2.0f - 1.0f;
+		float Y = (static_cast<float>(rand() % static_cast<int>(WINDOW_HEIGHT)) / WINDOW_HEIGHT) * 2.0f - 1.0f;
+		Species species;
+		fishes[i] = Fish(X, Y, species);
+
+		if (i % 3 == 0)
+		{
+			fishes[i].species.color = glm::vec3(0, 1, 0);
+			fishes[i].species.size = 0.04;
+			fishes[i].dx = 0.001;
+		}
+		else if (i % 3 == 1)
+		{
+			fishes[i].species.color = glm::vec3(0, 0, 1);
+			fishes[i].species.size = 0.02;
+			fishes[i].dy = 0.002;
+		}
+		else
+		{
+			fishes[i].dy = 0.0005;
+			fishes[i].dx = 0.0003;
+		}
+	}
+}
 bool initialize()
 {
 	cudaDeviceProp deviceProp;
@@ -59,17 +89,35 @@ bool initialize()
 	gladLoadGL();
 
 	shaderProgram = Shader("default.vert", "default.frag");
-
+	init_fishes();
 	Boids::init_simulation(N);
 
 	return true;
 }
-void setup_triangles() {
+
+void setup_triangles() 
+{
 	float vertices[3 * 5 * N];
 
-	for (int i = 0; i < 3*5*N; ++i)
+	for (int i = 0; i < N; ++i)
 	{
+		Fish fish = fishes[i];
+		float centerX = fish.x;
+		float centerY = fish.y;
 
+		float sideLength = fish.species.size;
+
+		vertices[i * 3 * 5] = centerX;
+		vertices[i * 3 * 5 + 1] = centerY + sideLength / sqrt(3);
+		vertices[i * 3 * 5 + 2] = fish.species.color.r; vertices[i * 3 * 5 + 3] = fish.species.color.g; vertices[i * 3 * 5 + 4] = fish.species.color.b;
+
+		vertices[i * 3 * 5 + 5] = centerX - sideLength / 2;
+		vertices[i * 3 * 5 + 6] = centerY - sideLength / (2 * sqrt(3));
+		vertices[i * 3 * 5 + 7] = fish.species.color.r; vertices[i * 3 * 5 + 8] = fish.species.color.g; vertices[i * 3 * 5 + 9] = fish.species.color.b;
+
+		vertices[i * 3 * 5 + 10] = centerX + sideLength / 2;
+		vertices[i * 3 * 5 + 11] = centerY - sideLength / (2 * sqrt(3));
+		vertices[i * 3 * 5 + 12] = fish.species.color.r; vertices[i * 3 * 5 + 13] = fish.species.color.g; vertices[i * 3 * 5 + 14] = fish.species.color.b;
 	}
 
 	glGenVertexArrays(1, &VAO);
@@ -85,9 +133,46 @@ void setup_triangles() {
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
 
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+}
+void update_triangles()
+{
+	float vertices[3 * 5 * N];
+
+	for (int i = 0; i < N; ++i)
+	{
+		Fish fish = fishes[i];
+		float centerX = fish.x;
+		float centerY = fish.y;
+
+		float sideLength = fish.species.size;
+
+		vertices[i * 3 * 5] = centerX;
+		vertices[i * 3 * 5 + 1] = centerY + sideLength / sqrt(3);
+		vertices[i * 3 * 5 + 2] = fish.species.color.r; vertices[i * 3 * 5 + 3] = fish.species.color.g; vertices[i * 3 * 5 + 4] = fish.species.color.b;
+
+		vertices[i * 3 * 5 + 5] = centerX - sideLength / 2;
+		vertices[i * 3 * 5 + 6] = centerY - sideLength / (2 * sqrt(3));
+		vertices[i * 3 * 5 + 7] = fish.species.color.r; vertices[i * 3 * 5 + 8] = fish.species.color.g; vertices[i * 3 * 5 + 9] = fish.species.color.b;
+
+		vertices[i * 3 * 5 + 10] = centerX + sideLength / 2;
+		vertices[i * 3 * 5 + 11] = centerY - sideLength / (2 * sqrt(3));
+		vertices[i * 3 * 5 + 12] = fish.species.color.r; vertices[i * 3 * 5 + 13] = fish.species.color.g; vertices[i * 3 * 5 + 14] = fish.species.color.b;
+	}
+
+	glBindVertexArray(VAO);
+
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
+}
+void update_fish()
+{
+	Boids::update_fishes(fishes, N);
+	update_triangles();
 }
 void draw_triangles()
 {
@@ -113,6 +198,7 @@ void program_loop()
 		// Tell OpenGL which Shader Program we want to use
 		shaderProgram.Activate();
 
+		update_fish();
 		draw_triangles();
 
 
