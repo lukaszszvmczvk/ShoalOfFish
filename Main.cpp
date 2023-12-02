@@ -21,7 +21,11 @@
 GLFWwindow* window = nullptr;
 GLuint VAO, VBO;
 Shader shaderProgram;
+
+// Fishes info
 Fish fishes[N];
+glm::vec2 pos[N];
+glm::vec2 vel[N];
 
 void init_fishes()
 {
@@ -29,26 +33,25 @@ void init_fishes()
 	{
 		float X = (static_cast<float>(rand() % static_cast<int>(WINDOW_WIDTH)));
 		float Y = (static_cast<float>(rand() % static_cast<int>(WINDOW_HEIGHT)));
-		Species species;
-		fishes[i] = Fish(X, Y, species);
-
+		pos[i] = glm::vec2(X, Y);
+		fishes[i] = Fish();
+		
 		if (i % 3 == 0)
 		{
-			fishes[i].species.color = glm::vec3(0, 1, 0);
-			fishes[i].species.size = 10.f;
-			fishes[i].dx = fishes[i].dxP = 1;
+			fishes[i].color = glm::vec3(0, 1, 0);
+			fishes[i].size = 10.f;
+			vel[i] = glm::vec2(3, -2);
 		}
 		else if (i % 3 == 1)
 		{
-			fishes[i].species.color = glm::vec3(0, 0, 1);
-			fishes[i].species.size = 20.f;
-			fishes[i].dy = fishes[i].dyP = 2;
+			fishes[i].color = glm::vec3(0, 0, 1);
+			fishes[i].size = 20.f;
+			vel[i] = glm::vec2(3, 3);
 		}
 		else
 		{
+			vel[i] = glm::vec2(-4, -2);
 		}
-		fishes[i].dy = fishes[i].dyP = 1;
-		fishes[i].dx = fishes[i].dxP = 1;
 	}
 }
 bool initialize()
@@ -119,22 +122,22 @@ void setup_triangles()
 	for (int i = 0; i < N; ++i)
 	{
 		Fish fish = fishes[i];
-		float centerX = fish.x;
-		float centerY = fish.y;
+		float centerX = pos[i].x;
+		float centerY = pos[i].y;
 
-		float sideLength = fish.species.size;
+		float sideLength = fish.size;
 
 		vertices[i * 3 * 5] = centerX;
 		vertices[i * 3 * 5 + 1] = centerY + sideLength / sqrt(3);
-		vertices[i * 3 * 5 + 2] = fish.species.color.r; vertices[i * 3 * 5 + 3] = fish.species.color.g; vertices[i * 3 * 5 + 4] = fish.species.color.b;
+		vertices[i * 3 * 5 + 2] = fish.color.r; vertices[i * 3 * 5 + 3] = fish.color.g; vertices[i * 3 * 5 + 4] = fish.color.b;
 
 		vertices[i * 3 * 5 + 5] = centerX - sideLength / 2;
 		vertices[i * 3 * 5 + 6] = centerY - sideLength / (2 * sqrt(3));
-		vertices[i * 3 * 5 + 7] = fish.species.color.r; vertices[i * 3 * 5 + 8] = fish.species.color.g; vertices[i * 3 * 5 + 9] = fish.species.color.b;
+		vertices[i * 3 * 5 + 7] = fish.color.r; vertices[i * 3 * 5 + 8] = fish.color.g; vertices[i * 3 * 5 + 9] = fish.color.b;
 
 		vertices[i * 3 * 5 + 10] = centerX + sideLength / 2;
 		vertices[i * 3 * 5 + 11] = centerY - sideLength / (2 * sqrt(3));
-		vertices[i * 3 * 5 + 12] = fish.species.color.r; vertices[i * 3 * 5 + 13] = fish.species.color.g; vertices[i * 3 * 5 + 14] = fish.species.color.b;
+		vertices[i * 3 * 5 + 12] = fish.color.r; vertices[i * 3 * 5 + 13] = fish.color.g; vertices[i * 3 * 5 + 14] = fish.color.b;
 	}
 
 	glGenVertexArrays(1, &VAO);
@@ -160,10 +163,10 @@ void update_triangles()
 	for (int i = 0; i < N; ++i)
 	{
 		Fish fish = fishes[i];
-		float centerX = fish.x;
-		float centerY = fish.y;
+		float centerX = pos[i].x;
+		float centerY = pos[i].y;
 
-		float sideLength = fish.species.size;
+		float sideLength = fish.size;
 
 		glm::vec2 A = glm::vec2(centerX, centerY + sideLength / sqrt(3));
 		glm::vec2 B = glm::vec2(centerX - sideLength / 2, centerY - sideLength / (2 * sqrt(3)));
@@ -171,15 +174,15 @@ void update_triangles()
 
 		vertices[i * 3 * 5] = A.x;
 		vertices[i * 3 * 5 + 1] = A.y;
-		vertices[i * 3 * 5 + 2] = fish.species.color.r; vertices[i * 3 * 5 + 3] = fish.species.color.g; vertices[i * 3 * 5 + 4] = fish.species.color.b;
+		vertices[i * 3 * 5 + 2] = fish.color.r; vertices[i * 3 * 5 + 3] = fish.color.g; vertices[i * 3 * 5 + 4] = fish.color.b;
 
 		vertices[i * 3 * 5 + 5] = B.x;
 		vertices[i * 3 * 5 + 6] = B.y;
-		vertices[i * 3 * 5 + 7] = fish.species.color.r; vertices[i * 3 * 5 + 8] = fish.species.color.g; vertices[i * 3 * 5 + 9] = fish.species.color.b;
+		vertices[i * 3 * 5 + 7] = fish.color.r; vertices[i * 3 * 5 + 8] = fish.color.g; vertices[i * 3 * 5 + 9] = fish.color.b;
 
 		vertices[i * 3 * 5 + 10] = C.x;
 		vertices[i * 3 * 5 + 11] = C.y;
-		vertices[i * 3 * 5 + 12] = fish.species.color.r; vertices[i * 3 * 5 + 13] = fish.species.color.g; vertices[i * 3 * 5 + 14] = fish.species.color.b;
+		vertices[i * 3 * 5 + 12] = fish.color.r; vertices[i * 3 * 5 + 13] = fish.color.g; vertices[i * 3 * 5 + 14] = fish.color.b;
 	}
 
 	glBindVertexArray(VAO);
@@ -192,7 +195,7 @@ void update_triangles()
 }
 void update_fish(float vr, float md, float r1, float r2, float r3)
 {
-	Boids::update_fishes(fishes, N, vr, md, r1, r2, r3);
+	Boids::update_fishes(pos,vel, N, vr, md, r1, r2, r3);
 	update_triangles();
 }
 void draw_triangles()
@@ -206,9 +209,9 @@ void program_loop()
 
 	float visualRange = 35.f;
 	float minDistance = 20.f;
-	float rule1_scale = 0.001f;
-	float rule2_scale = 0.05f;
-	float rule3_scale = 0.05f;
+	float cohesion_scale = 0.001f;
+	float separation_scale = 0.05f;
+	float alignment_scale = 0.05f;
 
 	setup_triangles();
 
@@ -229,16 +232,16 @@ void program_loop()
 
 		// Tell OpenGL which Shader Program we want to use
 
-		update_fish(visualRange, minDistance, rule1_scale, rule2_scale, rule3_scale);
+		update_fish(visualRange, minDistance, cohesion_scale, separation_scale, alignment_scale);
 		draw_triangles();
 
 
 		ImGui::Begin("Set properties");
 		ImGui::SliderFloat("Visual range of fish", &visualRange, 0.0f, 100.0f);
 		ImGui::SliderFloat("Min. separation distance", &minDistance, 0.0f, 50.0f);
-		ImGui::SliderFloat("Rule 1 scale", &rule1_scale, 0.0f, 0.1f);
-		ImGui::SliderFloat("Rule 2 scale", &rule2_scale, 0.0f, 0.1f);
-		ImGui::SliderFloat("Rule 3 scale", &rule3_scale, 0.0f, 0.1f);
+		ImGui::SliderFloat("Cohesion rule scale", &cohesion_scale, 0.0f, 0.1f);
+		ImGui::SliderFloat("Separation rule scale", &separation_scale, 0.0f, 0.1f);
+		ImGui::SliderFloat("Alignment rule scale", &alignment_scale, 0.0f, 0.1f);
 
 		ImGui::End();
 

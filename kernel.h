@@ -13,5 +13,6 @@
 namespace Boids
 {
 	void init_simulation(unsigned int N);
-	void update_fishes(Fish* fishes, unsigned int N, float vr, float md, float r1, float r2, float r3);
+	void end_simulation();
+	void update_fishes(glm::vec2* pos, glm::vec2* vel, unsigned int N, float vr, float md, float r1, float r2, float r3);
 }
