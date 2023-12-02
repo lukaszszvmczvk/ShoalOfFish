@@ -15,7 +15,7 @@ public:
 	}
 	Species()
 	{
-		size = 0.03f;
+		size = 15;
 		color = glm::vec3(1.0f, 0, 0);
 	}
 };

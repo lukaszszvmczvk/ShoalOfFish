@@ -9,6 +9,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "kernel.h"
 #include "fish.h"
+#include <ctime>
 
 #define WINDOW_WIDTH 1600
 #define WINDOW_HEIGHT 900
@@ -23,32 +24,34 @@ void init_fishes()
 {
 	for (int i = 0; i < N; ++i)
 	{
-		float X = (static_cast<float>(rand() % static_cast<int>(WINDOW_WIDTH)) / WINDOW_WIDTH) * 2.0f - 1.0f;
-		float Y = (static_cast<float>(rand() % static_cast<int>(WINDOW_HEIGHT)) / WINDOW_HEIGHT) * 2.0f - 1.0f;
+		float X = (static_cast<float>(rand() % static_cast<int>(WINDOW_WIDTH)));
+		float Y = (static_cast<float>(rand() % static_cast<int>(WINDOW_HEIGHT)));
 		Species species;
 		fishes[i] = Fish(X, Y, species);
 
 		if (i % 3 == 0)
 		{
 			fishes[i].species.color = glm::vec3(0, 1, 0);
-			fishes[i].species.size = 0.04;
-			fishes[i].dx = 0.001;
+			fishes[i].species.size = 10.f;
+			fishes[i].dx = 1;
 		}
 		else if (i % 3 == 1)
 		{
 			fishes[i].species.color = glm::vec3(0, 0, 1);
-			fishes[i].species.size = 0.02;
-			fishes[i].dy = 0.002;
+			fishes[i].species.size = 20.f;
+			fishes[i].dy = 2;
 		}
 		else
 		{
-			fishes[i].dy = 0.0005;
-			fishes[i].dx = 0.0003;
+			fishes[i].dy = 1;
+			fishes[i].dx = 1;
 		}
 	}
 }
 bool initialize()
 {
+	srand(static_cast<unsigned int>(time(0)));
+
 	cudaDeviceProp deviceProp;
 	int gpuDevice = 0;
 	int device_count = 0;
@@ -88,13 +91,16 @@ bool initialize()
 
 	gladLoadGL();
 
-	shaderProgram = Shader("default.vert", "default.frag");
+	shaderProgram = Shader("default");
+	shaderProgram.bind();
+	glm::mat4 proj = glm::ortho(0.f, static_cast<float>(WINDOW_WIDTH), 0.f, static_cast<float>(WINDOW_HEIGHT), -1.f, 1.f);
+	shaderProgram.setUniformMat4fv("projection", proj);
+
 	init_fishes();
 	Boids::init_simulation(N);
 
 	return true;
 }
-
 void setup_triangles() 
 {
 	float vertices[3 * 5 * N];
@@ -196,7 +202,6 @@ void program_loop()
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		// Tell OpenGL which Shader Program we want to use
-		shaderProgram.Activate();
 
 		update_fish();
 		draw_triangles();
@@ -208,7 +213,7 @@ void program_loop()
 
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
-	shaderProgram.Delete();
+	shaderProgram.unbind();
 	// Delete window before ending the program
 	glfwDestroyWindow(window);
 	// Terminate GLFW before ending the program
