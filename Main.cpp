@@ -13,7 +13,7 @@
 
 #define WINDOW_WIDTH 1600
 #define WINDOW_HEIGHT 900
-#define N 100
+#define N 1000
 
 GLFWwindow* window = nullptr;
 GLuint VAO, VBO;
@@ -33,19 +33,19 @@ void init_fishes()
 		{
 			fishes[i].species.color = glm::vec3(0, 1, 0);
 			fishes[i].species.size = 10.f;
-			fishes[i].dx = 1;
+			fishes[i].dx = fishes[i].dxP = 1;
 		}
 		else if (i % 3 == 1)
 		{
 			fishes[i].species.color = glm::vec3(0, 0, 1);
 			fishes[i].species.size = 20.f;
-			fishes[i].dy = 2;
+			fishes[i].dy = fishes[i].dyP = 2;
 		}
 		else
 		{
-			fishes[i].dy = 1;
-			fishes[i].dx = 1;
 		}
+		fishes[i].dy = fishes[i].dyP = 1;
+		fishes[i].dx = fishes[i].dxP = 1;
 	}
 }
 bool initialize()
@@ -154,16 +154,20 @@ void update_triangles()
 
 		float sideLength = fish.species.size;
 
-		vertices[i * 3 * 5] = centerX;
-		vertices[i * 3 * 5 + 1] = centerY + sideLength / sqrt(3);
+		glm::vec2 A = glm::vec2(centerX, centerY + sideLength / sqrt(3));
+		glm::vec2 B = glm::vec2(centerX - sideLength / 2, centerY - sideLength / (2 * sqrt(3)));
+		glm::vec2 C = glm::vec2(centerX + sideLength / 2, centerY - sideLength / (2 * sqrt(3)));
+
+		vertices[i * 3 * 5] = A.x;
+		vertices[i * 3 * 5 + 1] = A.y;
 		vertices[i * 3 * 5 + 2] = fish.species.color.r; vertices[i * 3 * 5 + 3] = fish.species.color.g; vertices[i * 3 * 5 + 4] = fish.species.color.b;
 
-		vertices[i * 3 * 5 + 5] = centerX - sideLength / 2;
-		vertices[i * 3 * 5 + 6] = centerY - sideLength / (2 * sqrt(3));
+		vertices[i * 3 * 5 + 5] = B.x;
+		vertices[i * 3 * 5 + 6] = B.y;
 		vertices[i * 3 * 5 + 7] = fish.species.color.r; vertices[i * 3 * 5 + 8] = fish.species.color.g; vertices[i * 3 * 5 + 9] = fish.species.color.b;
 
-		vertices[i * 3 * 5 + 10] = centerX + sideLength / 2;
-		vertices[i * 3 * 5 + 11] = centerY - sideLength / (2 * sqrt(3));
+		vertices[i * 3 * 5 + 10] = C.x;
+		vertices[i * 3 * 5 + 11] = C.y;
 		vertices[i * 3 * 5 + 12] = fish.species.color.r; vertices[i * 3 * 5 + 13] = fish.species.color.g; vertices[i * 3 * 5 + 14] = fish.species.color.b;
 	}
 
