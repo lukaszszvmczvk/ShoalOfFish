@@ -8,17 +8,8 @@
 #include <thrust/gather.h>
 
 unsigned int block_size = 256;
-float r = 0.01f;
 
-constexpr float visualRange = 35.f;
-constexpr float minDistance = 20.f;
-
-
-constexpr float rule1_scale = 0.001f;
-constexpr float rule2_scale = 0.05f;
-constexpr float rule3_scale = 0.05f;
-
-constexpr float max_speed = 20.0f;
+constexpr float max_speed = 15.0f;
 
 constexpr float turn_factor = 1.f;
 
@@ -28,7 +19,7 @@ constexpr float width = 1600.f;
 constexpr float margin = 50;
 
 
-__global__ void update_pos(Fish* fishes, unsigned int N)
+__global__ void update_pos(Fish* fishes, unsigned int N, float visualRange, float minDistance, float rule1_scale, float rule2_scale, float rule3_scale)
 {
     const auto index = threadIdx.x + (blockIdx.x * blockDim.x);
     if (index >= N) { return; }
@@ -123,7 +114,7 @@ void Boids::init_simulation(unsigned int N)
     cudaDeviceSynchronize();
 }
 
-void Boids::update_fishes(Fish* fishes, unsigned int N)
+void Boids::update_fishes(Fish* fishes, unsigned int N, float vr, float md, float r1, float r2, float r3)
 {
     const dim3 full_blocks_per_grid((N + block_size - 1) /
         block_size);
@@ -133,7 +124,7 @@ void Boids::update_fishes(Fish* fishes, unsigned int N)
     cudaSetDevice(0);
     cudaMalloc(reinterpret_cast<void**>(&fishes_gpu), N * sizeof(Fish));
     cudaMemcpy(fishes_gpu, fishes, N * sizeof(Fish), cudaMemcpyHostToDevice);
-    update_pos << <full_blocks_per_grid, threads_per_block >> > (fishes_gpu, N);
+    update_pos << <full_blocks_per_grid, threads_per_block >> > (fishes_gpu, N, vr, md, r1, r2, r3);
 
     cudaDeviceSynchronize();
     cudaMemcpy(fishes, fishes_gpu, N * sizeof(Fish), cudaMemcpyDeviceToHost);

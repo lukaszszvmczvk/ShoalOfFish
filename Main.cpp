@@ -1,4 +1,6 @@
 #include<iostream>
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
 #include<glad/glad.h>
 #include<GLFW/glfw3.h>
 #include "kernel.h"
@@ -10,10 +12,11 @@
 #include "kernel.h"
 #include "fish.h"
 #include <ctime>
+#include <imgui_impl_opengl3.h>
 
 #define WINDOW_WIDTH 1600
 #define WINDOW_HEIGHT 900
-#define N 1000
+#define N 200
 
 GLFWwindow* window = nullptr;
 GLuint VAO, VBO;
@@ -95,6 +98,14 @@ bool initialize()
 	shaderProgram.bind();
 	glm::mat4 proj = glm::ortho(0.f, static_cast<float>(WINDOW_WIDTH), 0.f, static_cast<float>(WINDOW_HEIGHT), -1.f, 1.f);
 	shaderProgram.setUniformMat4fv("projection", proj);
+
+
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	ImGui::StyleColorsDark();
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init("#version 330");
 
 	init_fishes();
 	Boids::init_simulation(N);
@@ -179,9 +190,9 @@ void update_triangles()
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 }
-void update_fish()
+void update_fish(float vr, float md, float r1, float r2, float r3)
 {
-	Boids::update_fishes(fishes, N);
+	Boids::update_fishes(fishes, N, vr, md, r1, r2, r3);
 	update_triangles();
 }
 void draw_triangles()
@@ -192,13 +203,24 @@ void draw_triangles()
 }
 void program_loop()
 {
+
+	float visualRange = 35.f;
+	float minDistance = 20.f;
+	float rule1_scale = 0.001f;
+	float rule2_scale = 0.05f;
+	float rule3_scale = 0.05f;
+
 	setup_triangles();
-	 
+
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
 	{
 		// Take care of all GLFW events
 		glfwPollEvents();
+
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
 
 		// Specify the color of the background
 		glClearColor(0.67f, 0.84f, 0.9f, 1.0f);
@@ -207,9 +229,21 @@ void program_loop()
 
 		// Tell OpenGL which Shader Program we want to use
 
-		update_fish();
+		update_fish(visualRange, minDistance, rule1_scale, rule2_scale, rule3_scale);
 		draw_triangles();
 
+
+		ImGui::Begin("Set properties");
+		ImGui::SliderFloat("Visual range of fish", &visualRange, 0.0f, 100.0f);
+		ImGui::SliderFloat("Min. separation distance", &minDistance, 0.0f, 50.0f);
+		ImGui::SliderFloat("Rule 1 scale", &rule1_scale, 0.0f, 0.1f);
+		ImGui::SliderFloat("Rule 2 scale", &rule2_scale, 0.0f, 0.1f);
+		ImGui::SliderFloat("Rule 3 scale", &rule3_scale, 0.0f, 0.1f);
+
+		ImGui::End();
+
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		// Swap the back buffer with the front buffer
 		glfwSwapBuffers(window);
@@ -218,6 +252,11 @@ void program_loop()
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
 	shaderProgram.unbind();
+
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
+
 	// Delete window before ending the program
 	glfwDestroyWindow(window);
 	// Terminate GLFW before ending the program
