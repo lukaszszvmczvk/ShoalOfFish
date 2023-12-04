@@ -3,21 +3,40 @@
 #include<GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
-struct Fish
+struct Species
 {
-	int speciesID;
+public:
 	float size;
 	glm::vec3 color;
-	Fish(int id, float size, glm::vec3 color)
+	Species(float size, glm::vec3 color)
 	{
-		speciesID = id;
 		this->size = size;
 		this->color = color;
 	}
-	Fish()
+	Species()
 	{
-		speciesID = 0;
 		size = 15;
 		color = glm::vec3(1.0f, 0, 0);
+	}
+};
+
+struct Fish
+{
+	float x;
+	float y;
+	float dx;
+	float dy;
+	Species species;
+	Fish(float x, float y, Species species)
+	{
+		this->x = x;
+		this->y = y;
+		this->species = species;
+		dx = dy = 0;
+	}
+	Fish()
+	{
+		x = y = dx = dy = 0;
+		species = Species();
 	}
 };
