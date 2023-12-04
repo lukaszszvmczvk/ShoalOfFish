@@ -13,6 +13,7 @@
 #include "fish.h"
 #include <ctime>
 #include <imgui_impl_opengl3.h>
+#include <chrono>
 
 #define WINDOW_WIDTH 1600
 #define WINDOW_HEIGHT 900
@@ -21,36 +22,46 @@
 GLFWwindow* window = nullptr;
 GLuint VAO, VBO;
 Shader shaderProgram;
+
+// Fishes info
 Fish fishes[N];
 
+// Initialzie fishes in random positions
 void init_fishes()
 {
 	for (int i = 0; i < N; ++i)
 	{
-		float X = (static_cast<float>(rand() % static_cast<int>(WINDOW_WIDTH)));
-		float Y = (static_cast<float>(rand() % static_cast<int>(WINDOW_HEIGHT)));
-		Species species;
-		fishes[i] = Fish(X, Y, species);
+		for (int i = 0; i < N; ++i)
+		{
+			float X = (static_cast<float>(rand() % static_cast<int>(WINDOW_WIDTH)));
+			float Y = (static_cast<float>(rand() % static_cast<int>(WINDOW_HEIGHT)));
+			Species species;
+			fishes[i] = Fish(X, Y, species);
 
-		if (i % 3 == 0)
-		{
-			fishes[i].species.color = glm::vec3(0, 1, 0);
-			fishes[i].species.size = 10.f;
-			fishes[i].dx = fishes[i].dxP = 1;
+			if (i % 3 == 0)
+			{
+				fishes[i].species.color = glm::vec3(0, 0.7f, 0);
+				fishes[i].species.size = 10.f;
+				fishes[i].dx = 3;
+				fishes[i].dy = -2;
+			}
+			else if (i % 3 == 1)
+			{
+				fishes[i].species.color = glm::vec3(0, 0, 1);
+				fishes[i].species.size = 20.f;
+				fishes[i].dy = 3;
+				fishes[i].dx = 3;
+			}
+			else
+			{
+				fishes[i].dx = -4;
+				fishes[i].dy = -2;
+			}
 		}
-		else if (i % 3 == 1)
-		{
-			fishes[i].species.color = glm::vec3(0, 0, 1);
-			fishes[i].species.size = 20.f;
-			fishes[i].dy = fishes[i].dyP = 2;
-		}
-		else
-		{
-		}
-		fishes[i].dy = fishes[i].dyP = 1;
-		fishes[i].dx = fishes[i].dxP = 1;
 	}
 }
+
+// Initialize application
 bool initialize()
 {
 	srand(static_cast<unsigned int>(time(0)));
@@ -94,12 +105,13 @@ bool initialize()
 
 	gladLoadGL();
 
+	// Initialize shaders
 	shaderProgram = Shader("default");
 	shaderProgram.bind();
 	glm::mat4 proj = glm::ortho(0.f, static_cast<float>(WINDOW_WIDTH), 0.f, static_cast<float>(WINDOW_HEIGHT), -1.f, 1.f);
 	shaderProgram.setUniformMat4fv("projection", proj);
 
-
+	// Initialize ImGui
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -112,7 +124,8 @@ bool initialize()
 
 	return true;
 }
-void setup_triangles() 
+// Setup fishes pos on screen and pass to VBO 
+void setup_fishes() 
 {
 	float vertices[3 * 5 * N];
 
@@ -153,7 +166,8 @@ void setup_triangles()
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 }
-void update_triangles()
+// Update fishes pos on screen and pass to VBO
+void update_fishes()
 {
 	float vertices[3 * 5 * N];
 
@@ -190,31 +204,37 @@ void update_triangles()
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 }
+// Run functions to update fishes
 void update_fish(float vr, float md, float r1, float r2, float r3)
 {
 	Boids::update_fishes(fishes, N, vr, md, r1, r2, r3);
-	update_triangles();
+	update_fishes();
 }
-void draw_triangles()
+// Draw fishes on screen
+void draw_fishes()
 {
 	glBindVertexArray(VAO);
 	glDrawArrays(GL_TRIANGLES, 0, 3 * N);
 	glBindVertexArray(0);
 }
+// Main program loop
 void program_loop()
 {
-
+	// Initalize basic values
 	float visualRange = 35.f;
 	float minDistance = 20.f;
-	float rule1_scale = 0.001f;
-	float rule2_scale = 0.05f;
-	float rule3_scale = 0.05f;
+	float cohesion_scale = 0.001f;
+	float separation_scale = 0.05f;
+	float alignment_scale = 0.05f;
 
-	setup_triangles();
+	setup_fishes();
 
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
 	{
+		// Start fps timer
+		auto startFrameTime = std::chrono::high_resolution_clock::now();
+
 		// Take care of all GLFW events
 		glfwPollEvents();
 
@@ -227,18 +247,17 @@ void program_loop()
 		// Clean the back buffer and assign the new color to it
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		// Tell OpenGL which Shader Program we want to use
 
-		update_fish(visualRange, minDistance, rule1_scale, rule2_scale, rule3_scale);
-		draw_triangles();
+		update_fish(visualRange, minDistance, cohesion_scale, separation_scale, alignment_scale);
+		draw_fishes();
 
 
 		ImGui::Begin("Set properties");
-		ImGui::SliderFloat("Visual range of fish", &visualRange, 0.0f, 100.0f);
+		ImGui::SliderFloat("Visual range of fish", &visualRange, 5.0f, 100.0f);
 		ImGui::SliderFloat("Min. separation distance", &minDistance, 0.0f, 50.0f);
-		ImGui::SliderFloat("Rule 1 scale", &rule1_scale, 0.0f, 0.1f);
-		ImGui::SliderFloat("Rule 2 scale", &rule2_scale, 0.0f, 0.1f);
-		ImGui::SliderFloat("Rule 3 scale", &rule3_scale, 0.0f, 0.1f);
+		ImGui::SliderFloat("Cohesion rule scale", &cohesion_scale, 0.0f, 0.1f);
+		ImGui::SliderFloat("Separation rule scale", &separation_scale, 0.0f, 0.1f);
+		ImGui::SliderFloat("Alignment rule scale", &alignment_scale, 0.0f, 0.1f);
 
 		ImGui::End();
 
@@ -247,8 +266,16 @@ void program_loop()
 
 		// Swap the back buffer with the front buffer
 		glfwSwapBuffers(window);
+
+		// Count and display fps
+		auto endFrameTime = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endFrameTime - startFrameTime).count();
+		float fps = 1000000.0f / static_cast<float>(duration);
+		std::cout << "FPS: " << fps << std::endl;
 	}
 
+
+	// Clear memory and end simulation
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
 	shaderProgram.unbind();
@@ -256,6 +283,7 @@ void program_loop()
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
+	Boids::end_simulation();
 
 	// Delete window before ending the program
 	glfwDestroyWindow(window);

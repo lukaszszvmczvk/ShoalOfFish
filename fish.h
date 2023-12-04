@@ -26,15 +26,13 @@ struct Fish
 	float y;
 	float dx;
 	float dy;
-	float dxP;
-	float dyP;
 	Species species;
 	Fish(float x, float y, Species species)
 	{
 		this->x = x;
 		this->y = y;
 		this->species = species;
-		dx = dy = dxP = dyP = 0;
+		dx = dy = 0;
 	}
 	Fish()
 	{
