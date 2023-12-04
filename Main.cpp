@@ -19,6 +19,8 @@
 #define WINDOW_HEIGHT 900
 #define N 200
 
+
+// OpenGL variables
 GLFWwindow* window = nullptr;
 GLuint VAO, VBO;
 Shader shaderProgram;
@@ -35,6 +37,12 @@ void init_fishes()
 		{
 			float X = (static_cast<float>(rand() % static_cast<int>(WINDOW_WIDTH)));
 			float Y = (static_cast<float>(rand() % static_cast<int>(WINDOW_HEIGHT)));
+
+			int x_vel = rand() % 5 + 1;
+			int y_vel = rand() % 5 + 1;
+			int x_rand = rand() % 2;
+			int y_rand = rand() % 2;
+			
 			Species species;
 			fishes[i] = Fish(X, Y, species);
 
@@ -42,25 +50,26 @@ void init_fishes()
 			{
 				fishes[i].species.color = glm::vec3(0, 0.7f, 0);
 				fishes[i].species.size = 10.f;
-				fishes[i].dx = 3;
-				fishes[i].dy = -2;
 			}
 			else if (i % 3 == 1)
 			{
 				fishes[i].species.color = glm::vec3(0, 0, 1);
 				fishes[i].species.size = 20.f;
-				fishes[i].dy = 3;
-				fishes[i].dx = 3;
 			}
+
+			if (x_rand == 0)
+				fishes[i].dx = x_vel;
 			else
-			{
-				fishes[i].dx = -4;
-				fishes[i].dy = -2;
-			}
+				fishes[i].dx = -x_vel;
+
+			if (y_rand == 0)
+				fishes[i].dy = y_vel;
+			else
+				fishes[i].dy = -y_vel;
+
 		}
 	}
 }
-
 // Initialize application
 bool initialize()
 {
@@ -205,9 +214,9 @@ void update_fishes()
 	glBindVertexArray(0);
 }
 // Run functions to update fishes
-void update_fish(float vr, float md, float r1, float r2, float r3)
+void update_fish(float vr, float md, float r1, float r2, float r3, float dt)
 {
-	Boids::update_fishes(fishes, N, vr, md, r1, r2, r3);
+	Boids::update_fishes(fishes, N, vr, md, r1, r2, r3, dt);
 	update_fishes();
 }
 // Draw fishes on screen
@@ -226,6 +235,7 @@ void program_loop()
 	float cohesion_scale = 0.001f;
 	float separation_scale = 0.05f;
 	float alignment_scale = 0.05f;
+	float dt = 0.7f;
 
 	setup_fishes();
 
@@ -248,7 +258,7 @@ void program_loop()
 		glClear(GL_COLOR_BUFFER_BIT);
 
 
-		update_fish(visualRange, minDistance, cohesion_scale, separation_scale, alignment_scale);
+		update_fish(visualRange, minDistance, cohesion_scale, separation_scale, alignment_scale, dt);
 		draw_fishes();
 
 
@@ -258,6 +268,7 @@ void program_loop()
 		ImGui::SliderFloat("Cohesion rule scale", &cohesion_scale, 0.0f, 0.1f);
 		ImGui::SliderFloat("Separation rule scale", &separation_scale, 0.0f, 0.1f);
 		ImGui::SliderFloat("Alignment rule scale", &alignment_scale, 0.0f, 0.1f);
+		ImGui::SliderFloat("Speed scale", &dt, 0.1f, 1.f);
 
 		ImGui::End();
 
@@ -290,6 +301,7 @@ void program_loop()
 	// Terminate GLFW before ending the program
 	glfwTerminate();
 }
+// Main function
 int main()
 {
 	if (initialize())

@@ -128,13 +128,13 @@ __global__ void compute_vel(Fish* fishes, glm::vec2* vel2, int* grid_cell_indice
 }
 
 // Update pos and velocity kernel function
-__global__ void update_pos_vel(Fish* fishes, glm::vec2* vel, unsigned int N)
+__global__ void update_pos_vel(Fish* fishes, glm::vec2* vel, unsigned int N, float dt)
 {
     const auto index = threadIdx.x + (blockIdx.x * blockDim.x);
     if (index >= N) { return; }
 
-    fishes[index].x += vel[index].x;
-    fishes[index].y += vel[index].y;
+    fishes[index].x += vel[index].x * dt;
+    fishes[index].y += vel[index].y * dt;
     fishes[index].dx = vel[index].x;
     fishes[index].dy = vel[index].y;
 }
@@ -228,7 +228,7 @@ void Boids::end_simulation()
     cudaFree(fishes_gpu_sorted);
 }
 // Function to upddate fish pos and vel
-void Boids::update_fishes(Fish* fishes, unsigned int N, float vr, float md, float r1, float r2, float r3)
+void Boids::update_fishes(Fish* fishes, unsigned int N, float vr, float md, float r1, float r2, float r3, float dt)
 {
     cudaError_t cudaStatus;
     
@@ -286,7 +286,7 @@ void Boids::update_fishes(Fish* fishes, unsigned int N, float vr, float md, floa
 
 
     // Update position
-    update_pos_vel << <full_blocks_per_grid, threads_per_block >> > (fishes_gpu_sorted, velocity_buffer, N);
+    update_pos_vel << <full_blocks_per_grid, threads_per_block >> > (fishes_gpu_sorted, velocity_buffer, N, dt);
     cudaDeviceSynchronize();
     
 
