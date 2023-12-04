@@ -13,6 +13,7 @@
 #include "fish.h"
 #include <ctime>
 #include <imgui_impl_opengl3.h>
+#include <chrono>
 
 #define WINDOW_WIDTH 1600
 #define WINDOW_HEIGHT 900
@@ -195,7 +196,7 @@ void update_triangles()
 }
 void update_fish(float vr, float md, float r1, float r2, float r3)
 {
-	Boids::update_fishes(pos,vel, N, vr, md, r1, r2, r3);
+	Boids::update_fishes(pos,vel,fishes, N, vr, md, r1, r2, r3);
 	update_triangles();
 }
 void draw_triangles()
@@ -218,6 +219,9 @@ void program_loop()
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
 	{
+		// count fps
+		auto startFrameTime = std::chrono::high_resolution_clock::now();
+
 		// Take care of all GLFW events
 		glfwPollEvents();
 
@@ -237,7 +241,7 @@ void program_loop()
 
 
 		ImGui::Begin("Set properties");
-		ImGui::SliderFloat("Visual range of fish", &visualRange, 0.0f, 100.0f);
+		ImGui::SliderFloat("Visual range of fish", &visualRange, 5.0f, 100.0f);
 		ImGui::SliderFloat("Min. separation distance", &minDistance, 0.0f, 50.0f);
 		ImGui::SliderFloat("Cohesion rule scale", &cohesion_scale, 0.0f, 0.1f);
 		ImGui::SliderFloat("Separation rule scale", &separation_scale, 0.0f, 0.1f);
@@ -250,6 +254,12 @@ void program_loop()
 
 		// Swap the back buffer with the front buffer
 		glfwSwapBuffers(window);
+
+		// count and display fps
+		auto endFrameTime = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endFrameTime - startFrameTime).count();
+		float fps = 1000000.0f / static_cast<float>(duration);
+		std::cout << "FPS: " << fps << std::endl;
 	}
 
 	glDeleteVertexArrays(1, &VAO);
@@ -259,6 +269,7 @@ void program_loop()
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
+	Boids::end_simulation();
 
 	// Delete window before ending the program
 	glfwDestroyWindow(window);
