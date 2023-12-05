@@ -97,6 +97,7 @@ bool initialize()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_FALSE);
 
 	// Create a GLFWwindow object
 	window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Shoal of fish", NULL, NULL);
@@ -253,7 +254,8 @@ void program_loop()
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		// Swap the back buffer with the front buffer
-		glfwSwapBuffers(window);
+		//glfwSwapBuffers(window);
+		glFlush();
 
 		// Count and display fps
 		auto endFrameTime = std::chrono::high_resolution_clock::now();

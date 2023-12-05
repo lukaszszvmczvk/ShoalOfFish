@@ -8,8 +8,8 @@
 
 // Const variables
 constexpr unsigned int block_size = 256;
-constexpr float max_speed = 15.0f;
-constexpr float turn_factor = 5.f;
+constexpr float max_speed = 10.0f;
+constexpr float turn_factor = 2.f;
 constexpr float height = 900.f;
 constexpr float width = 1600.f;
 constexpr float margin = 50;
