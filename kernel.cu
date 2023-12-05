@@ -8,8 +8,8 @@
 
 // Const variables
 constexpr unsigned int block_size = 256;
-constexpr float max_speed = 20.0f;
-constexpr float turn_factor = 1.f;
+constexpr float max_speed = 15.0f;
+constexpr float turn_factor = 5.f;
 constexpr float height = 900.f;
 constexpr float width = 1600.f;
 constexpr float margin = 50;
@@ -19,12 +19,13 @@ constexpr float margin = 50;
 glm::vec2* velocity_buffer = nullptr;
 Fish* fishes_gpu = nullptr;
 Fish* fishes_gpu_sorted = nullptr;
-int* indices = nullptr;
-int* grid_cell_indices = nullptr;
+unsigned int* indices = nullptr;
+unsigned int* grid_cell_indices = nullptr;
+float* vertices_array_gpu = nullptr;
 
 // Compute velocity kernel function
-__global__ void compute_vel(Fish* fishes, glm::vec2* vel2, int* grid_cell_indices, int* grid_cell_start, int* grid_cell_end,
-    unsigned int N, float visualRange, float minDistance, float cohesion_scale, float separation_scale, float alignment_scale)
+__global__ void compute_vel(Fish* fishes, glm::vec2* vel2, unsigned int* grid_cell_indices, int* grid_cell_start, int* grid_cell_end,
+    unsigned int N, float visualRange, float minDistance, float cohesion_scale, float separation_scale, float alignment_scale, unsigned int grid_size)
 {
     const auto index = threadIdx.x + (blockIdx.x * blockDim.x);
     if (index >= N) { return; }
@@ -44,15 +45,13 @@ __global__ void compute_vel(Fish* fishes, glm::vec2* vel2, int* grid_cell_indice
     // Find neighbours cells
     int cell_index = grid_cell_indices[index];
     int row_cells = width / (2 * visualRange) + 1;
-    int grid_size = row_cells * (height / (2 * visualRange) + 1);
-    int neighbour_cells[] = { cell_index + 1, cell_index - 1, index - row_cells, cell_index + row_cells, cell_index + row_cells - 1, cell_index + row_cells + 1,
-                cell_index - row_cells + 1, cell_index - row_cells - 1, cell_index };
-
+    int neighbour_cells[] = {cell_index, cell_index + 1, cell_index - 1, cell_index + row_cells, cell_index - row_cells, cell_index - row_cells - 1,
+                    cell_index - row_cells + 1, cell_index + row_cells - 1, cell_index + row_cells + 1 };
     // Go through neighbour grids
     for (int j = 0; j < 9; ++j)
     {
         int current_cell = neighbour_cells[j];
-        
+
         if (current_cell < 0 || current_cell >= grid_size)
             continue;
 
@@ -140,7 +139,7 @@ __global__ void update_pos_vel(Fish* fishes, glm::vec2* vel, unsigned int N, flo
 }
 
 // Assign grid cell to fish
-__global__ void assign_grid_cell(Fish* fishes, int* grid_cells, int* indices, float cell_width, unsigned int N)
+__global__ void assign_grid_cell(Fish* fishes, unsigned int* grid_cells, unsigned int* indices, float cell_width, unsigned int N)
 {
     const auto index = threadIdx.x + (blockIdx.x * blockDim.x);
     if (index >= N) { return; }
@@ -158,31 +157,57 @@ __global__ void assign_grid_cell(Fish* fishes, int* grid_cells, int* indices, fl
 }
 
 // Compute start and end indices of cell
-__global__ void compute_start_end_cell(int* grid_cell_indices, int* grid_cell_start, int* grid_cell_end, int grid_size, unsigned int N)
+__global__ void compute_start_end_cell(unsigned int* grid_cell_indices, int* grid_cell_start, int* grid_cell_end, unsigned int N)
 {
     const auto index = threadIdx.x + (blockIdx.x * blockDim.x);
-    if (index >= grid_size) { return; }
+    if (index >= N) { return; }
 
-    int start = -1;
-    int i = 0;
-    while (i < N && grid_cell_indices[i] <= index)
+    unsigned int grid_cell_id = grid_cell_indices[index];
+
+    if (index == 0)
     {
-        if (start == -1 && grid_cell_indices[i] == index)
-        {
-            start = i;
+        grid_cell_start[grid_cell_id] = 0;
+        return;
+    }
+    unsigned int prev_grid_cell_id = grid_cell_indices[index - 1];
+    if (grid_cell_id != prev_grid_cell_id)
+    {
+        grid_cell_end[prev_grid_cell_id] = index;
+        grid_cell_start[grid_cell_id] = index;
+        if (index == N - 1) 
+        { 
+            grid_cell_end[grid_cell_id] = index;
         }
-        ++i;
     }
-    if (start == -1)
-    {
-        grid_cell_start[index] = -1;
-        grid_cell_end[index] = -1;
-    }
-    else
-    {
-        grid_cell_start[index] = start;
-        grid_cell_end[index] = i;
-    }
+}
+
+__global__ void copy_fishes_kernel(Fish* fishes, float* vertices, unsigned int N)
+{
+    const auto i = threadIdx.x + (blockIdx.x * blockDim.x);
+    if (i >= N) { return; }
+
+    Fish fish = fishes[i];
+    float centerX = fish.x;
+    float centerY = fish.y;
+
+    float sideLength = fish.species.size;
+
+    glm::vec2 A = glm::vec2(centerX, centerY + sideLength / 1.73);
+    glm::vec2 B = glm::vec2(centerX - sideLength / 2, centerY - sideLength / (2 * 1.73));
+    glm::vec2 C = glm::vec2(centerX + sideLength / 2, centerY - sideLength / (2 * 1.73));
+
+    vertices[i * 3 * 5] = A.x;
+    vertices[i * 3 * 5 + 1] = A.y;
+    vertices[i * 3 * 5 + 2] = fish.species.color.r; vertices[i * 3 * 5 + 3] = fish.species.color.g; vertices[i * 3 * 5 + 4] = fish.species.color.b;
+
+    vertices[i * 3 * 5 + 5] = B.x;
+    vertices[i * 3 * 5 + 6] = B.y;
+    vertices[i * 3 * 5 + 7] = fish.species.color.r; vertices[i * 3 * 5 + 8] = fish.species.color.g; vertices[i * 3 * 5 + 9] = fish.species.color.b;
+
+    vertices[i * 3 * 5 + 10] = C.x;
+    vertices[i * 3 * 5 + 11] = C.y;
+    vertices[i * 3 * 5 + 12] = fish.species.color.r; vertices[i * 3 * 5 + 13] = fish.species.color.g; vertices[i * 3 * 5 + 14] = fish.species.color.b;
+
 }
 
 // Allocate needed memory
@@ -199,11 +224,11 @@ void Boids::init_simulation(unsigned int N)
     if(cudaStatus != cudaSuccess) {
         fprintf(stderr, "cudaMalloc failed!");
     }
-    cudaStatus = cudaMalloc(reinterpret_cast<void**>(&grid_cell_indices), N * sizeof(int));
+    cudaStatus = cudaMalloc(reinterpret_cast<void**>(&grid_cell_indices), N * sizeof(unsigned int));
     if (cudaStatus != cudaSuccess) {
         fprintf(stderr, "cudaMalloc failed!");
     }
-    cudaStatus = cudaMalloc(reinterpret_cast<void**>(&indices), N * sizeof(int));
+    cudaStatus = cudaMalloc(reinterpret_cast<void**>(&indices), N * sizeof(unsigned int));
     if (cudaStatus != cudaSuccess) {
         fprintf(stderr, "cudaMalloc failed!");
     }
@@ -212,6 +237,10 @@ void Boids::init_simulation(unsigned int N)
         fprintf(stderr, "cudaMalloc failed!");
     }
     cudaStatus = cudaMalloc(reinterpret_cast<void**>(&fishes_gpu_sorted), N * sizeof(Fish));
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMalloc failed!");
+    }
+    cudaStatus = cudaMalloc(reinterpret_cast<void**>(&vertices_array_gpu), 15 * N * sizeof(float));
     if (cudaStatus != cudaSuccess) {
         fprintf(stderr, "cudaMalloc failed!");
     }
@@ -226,17 +255,25 @@ void Boids::end_simulation()
     cudaFree(grid_cell_indices);
     cudaFree(fishes_gpu);
     cudaFree(fishes_gpu_sorted);
+    cudaFree(vertices_array_gpu);
 }
 // Function to upddate fish pos and vel
 void Boids::update_fishes(Fish* fishes, unsigned int N, float vr, float md, float r1, float r2, float r3, float dt)
 {
+   /* int x[5];
+    int y[5];
+    for (int i = 0; i < N; ++i)
+    {
+        x[i] = fishes[i].x;
+        y[i] = fishes[i].y;
+    }*/
     cudaError_t cudaStatus;
     
     const dim3 full_blocks_per_grid((N + block_size - 1) / block_size);
     const dim3 threads_per_block(block_size);
 
     float cell_width = 2 * vr;
-    int grid_size = (width / cell_width + 1) * (height / cell_width + 1);
+    unsigned int grid_size = (width / cell_width + 1) * (height / cell_width + 1);
     const dim3 full_blocks_per_grid2((grid_size + block_size - 1) / block_size);
 
     // Allocate memory for start and end indices
@@ -262,6 +299,7 @@ void Boids::update_fishes(Fish* fishes, unsigned int N, float vr, float md, floa
     assign_grid_cell << <full_blocks_per_grid, threads_per_block >> > (fishes_gpu, grid_cell_indices, indices, cell_width, N);
     cudaDeviceSynchronize();
 
+
     // Cast arrays to perform thrust operations
     auto thrust_gci = thrust::device_pointer_cast(grid_cell_indices);
     auto thrust_i = thrust::device_pointer_cast(indices);
@@ -271,9 +309,20 @@ void Boids::update_fishes(Fish* fishes, unsigned int N, float vr, float md, floa
     // Sort fishes indicies by grid cell
     thrust::sort_by_key(thrust_gci, thrust_gci + N, thrust_i);
 
+    //int grid_cell[5];
+    //cudaStatus = cudaMemcpy(grid_cell, grid_cell_indices, N * sizeof(int), cudaMemcpyDeviceToHost);
+
+    //int ind[5];
+    //cudaStatus = cudaMemcpy(ind, indices, N * sizeof(int), cudaMemcpyDeviceToHost);
+
     // Compute start and end indices of grid cell
-    compute_start_end_cell << <full_blocks_per_grid2, threads_per_block >> > (grid_cell_indices, grid_cell_start, grid_cell_end, grid_size, N);
+    compute_start_end_cell << <full_blocks_per_grid, threads_per_block >> > (grid_cell_indices, grid_cell_start, grid_cell_end, N);
     cudaDeviceSynchronize();
+   /* 
+    int start[54];
+    int end[54];
+    cudaStatus = cudaMemcpy(start, grid_cell_start, 54 * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaStatus = cudaMemcpy(end, grid_cell_end, 54 * sizeof(int), cudaMemcpyDeviceToHost);*/
 
     // Sort fish pos and vel by indices
     thrust::gather(thrust_i, thrust_i + N, thrust_f, thrust_fs);
@@ -281,7 +330,7 @@ void Boids::update_fishes(Fish* fishes, unsigned int N, float vr, float md, floa
 
     // Update velocity
     compute_vel << <full_blocks_per_grid, threads_per_block >> > (fishes_gpu_sorted, velocity_buffer, grid_cell_indices, grid_cell_start, grid_cell_end,
-        N, vr, md, r1, r2, r3);
+        N, vr, md, r1, r2, r3, grid_size);
     cudaDeviceSynchronize();
 
 
@@ -299,4 +348,32 @@ void Boids::update_fishes(Fish* fishes, unsigned int N, float vr, float md, floa
     // Zwolnienie pamiêci
     cudaFree(grid_cell_start);
     cudaFree(grid_cell_end);
+}
+
+void Boids::copy_fishes(Fish* fishes, float* vertices_array, unsigned int N)
+{
+    cudaError_t cudaStatus;
+
+    const dim3 full_blocks_per_grid((N + block_size - 1) / block_size);
+    const dim3 threads_per_block(block_size);
+
+    // Copy data to gpu
+    cudaStatus = cudaMemcpy(fishes_gpu, fishes, N * sizeof(Fish), cudaMemcpyHostToDevice);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpy failed!");
+    }
+    cudaStatus = cudaMemcpy(vertices_array_gpu, vertices_array, 15 * N * sizeof(float), cudaMemcpyHostToDevice);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpy failed!");
+    }
+
+    copy_fishes_kernel << <full_blocks_per_grid, threads_per_block >> > (fishes_gpu, vertices_array_gpu, N);
+    cudaDeviceSynchronize();
+
+    // Przerzucenie pamieci na cpu
+    cudaStatus = cudaMemcpy(vertices_array, vertices_array_gpu, 15 * N * sizeof(float), cudaMemcpyDeviceToHost);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpy failed!");
+    }
+
 }

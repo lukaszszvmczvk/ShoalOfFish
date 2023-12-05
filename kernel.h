@@ -15,4 +15,5 @@ namespace Boids
 	void init_simulation(unsigned int N);
 	void end_simulation();
 	void update_fishes(Fish* fishes, unsigned int N, float vr, float md, float r1, float r2, float r3, float dt);
+	void copy_fishes(Fish* fishes, float* vertices_array, unsigned int N);
 }
