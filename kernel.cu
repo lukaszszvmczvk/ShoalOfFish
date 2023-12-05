@@ -260,13 +260,6 @@ void Boids::end_simulation()
 // Function to upddate fish pos and vel
 void Boids::update_fishes(Fish* fishes, unsigned int N, float vr, float md, float r1, float r2, float r3, float dt)
 {
-   /* int x[5];
-    int y[5];
-    for (int i = 0; i < N; ++i)
-    {
-        x[i] = fishes[i].x;
-        y[i] = fishes[i].y;
-    }*/
     cudaError_t cudaStatus;
     
     const dim3 full_blocks_per_grid((N + block_size - 1) / block_size);
@@ -309,20 +302,9 @@ void Boids::update_fishes(Fish* fishes, unsigned int N, float vr, float md, floa
     // Sort fishes indicies by grid cell
     thrust::sort_by_key(thrust_gci, thrust_gci + N, thrust_i);
 
-    //int grid_cell[5];
-    //cudaStatus = cudaMemcpy(grid_cell, grid_cell_indices, N * sizeof(int), cudaMemcpyDeviceToHost);
-
-    //int ind[5];
-    //cudaStatus = cudaMemcpy(ind, indices, N * sizeof(int), cudaMemcpyDeviceToHost);
-
     // Compute start and end indices of grid cell
     compute_start_end_cell << <full_blocks_per_grid, threads_per_block >> > (grid_cell_indices, grid_cell_start, grid_cell_end, N);
     cudaDeviceSynchronize();
-   /* 
-    int start[54];
-    int end[54];
-    cudaStatus = cudaMemcpy(start, grid_cell_start, 54 * sizeof(int), cudaMemcpyDeviceToHost);
-    cudaStatus = cudaMemcpy(end, grid_cell_end, 54 * sizeof(int), cudaMemcpyDeviceToHost);*/
 
     // Sort fish pos and vel by indices
     thrust::gather(thrust_i, thrust_i + N, thrust_f, thrust_fs);
