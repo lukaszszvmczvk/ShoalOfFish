@@ -267,7 +267,6 @@ void Boids::update_fishes(Fish* fishes, unsigned int N, float vr, float md, floa
 
     float cell_width = 2 * vr;
     unsigned int grid_size = (width / cell_width + 1) * (height / cell_width + 1);
-    const dim3 full_blocks_per_grid2((grid_size + block_size - 1) / block_size);
 
     // Allocate memory for start and end indices
     int* grid_cell_start;
