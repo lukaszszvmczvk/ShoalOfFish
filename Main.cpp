@@ -20,7 +20,7 @@
 #define WINDOW_HEIGHT 900
 
 // Fish count
-#define N 1000
+#define N 500
 
 // OpenGL variables
 GLFWwindow* window = nullptr;
@@ -231,9 +231,9 @@ void update_fishes()
 	glBindVertexArray(0);
 }
 // Run functions to update fishes
-void update_fish(float vr, float md, float r1, float r2, float r3, float speed_scale)
+void update_fish(float vr, float md, float r1, float r2, float r3, float speed_scale, bool group_by_species)
 {
-	CudaFunctions::update_fishes(fishes, N, vr, md, r1, r2, r3, speed_scale, mouseX, mouseY, mouse_pressed);
+	CudaFunctions::update_fishes(fishes, N, vr, md, r1, r2, r3, speed_scale, mouseX, mouseY, mouse_pressed, group_by_species);
 	update_fishes();
 }
 // Draw fishes on screen
@@ -253,6 +253,7 @@ void program_loop()
 	float separation_scale = 0.05f;
 	float alignment_scale = 0.05f;
 	float speed_scale = 0.1f;
+	bool group_by_species = false;
 
 	setup_fishes();
 
@@ -275,17 +276,19 @@ void program_loop()
 		glClear(GL_COLOR_BUFFER_BIT);
 
 
-		update_fish(visualRange, minDistance, cohesion_scale, separation_scale, alignment_scale, speed_scale);
+		update_fish(visualRange, minDistance, cohesion_scale, separation_scale, alignment_scale, speed_scale, group_by_species);
 		draw_fishes();
 
 
 		ImGui::Begin("Set properties");
+		ImGui::Text("Liczba rybek %d", N);
 		ImGui::SliderFloat("Visual range of fish", &visualRange, 5.0f, 100.0f);
 		ImGui::SliderFloat("Min. separation distance", &minDistance, 0.0f, 50.0f);
 		ImGui::SliderFloat("Cohesion rule scale", &cohesion_scale, 0.0f, 0.1f);
 		ImGui::SliderFloat("Separation rule scale", &separation_scale, 0.0f, 0.1f);
 		ImGui::SliderFloat("Alignment rule scale", &alignment_scale, 0.0f, 0.1f);
 		ImGui::SliderFloat("Speed scale", &speed_scale, 0.1f, 0.5f);
+		ImGui::Checkbox("Group by species", &group_by_species);
 
 		ImGui::End();
 

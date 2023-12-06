@@ -1,6 +1,5 @@
 #define GLM_FORCE_CUDA
 #include "kernel.h"
-#include <cmath>
 #include <cstdio>
 #include <cuda.h>
 #include <glm/glm.hpp>
@@ -26,7 +25,7 @@ float* vertices_array_gpu = nullptr;
 // Compute velocity kernel function
 __global__ void compute_vel(Fish* fishes, glm::vec2* vel2, unsigned int* grid_cell_indices, int* grid_cell_start, int* grid_cell_end,
     unsigned int N, float visualRange, float minDistance, float cohesion_scale, float separation_scale, float alignment_scale, unsigned int grid_size,
-    double mouseX, double mouseY, bool mouse_pressed)
+    double mouseX, double mouseY, bool mouse_pressed, bool group_by_species)
 {
     const auto index = threadIdx.x + (blockIdx.x * blockDim.x);
     if (index >= N) { return; }
@@ -61,6 +60,9 @@ __global__ void compute_vel(Fish* fishes, glm::vec2* vel2, unsigned int* grid_ce
         for (int i = grid_cell_start[current_cell]; i < grid_cell_end[current_cell]; ++i)
         {
             if (i == index)
+                continue;
+
+            if (group_by_species && fishes[i].species.id != fishes[index].species.id)
                 continue;
 
             // Check if fish is in distance
@@ -287,7 +289,7 @@ void CudaFunctions::end_simulation()
     cudaFree(vertices_array_gpu);
 }
 // Function to upddate fish pos and vel
-void CudaFunctions::update_fishes(Fish* fishes, unsigned int N, float vr, float md, float r1, float r2, float r3, float speed_scale, double mouseX, double mouseY, bool mouse_pressed)
+void CudaFunctions::update_fishes(Fish* fishes, unsigned int N, float vr, float md, float r1, float r2, float r3, float speed_scale, double mouseX, double mouseY, bool mouse_pressed, bool group_by_species)
 {
     cudaError_t cudaStatus;
     
@@ -341,7 +343,7 @@ void CudaFunctions::update_fishes(Fish* fishes, unsigned int N, float vr, float 
     // Update velocity
     compute_vel << <full_blocks_per_grid, threads_per_block >> > (fishes_gpu_sorted, velocity_buffer, grid_cell_indices, grid_cell_start, grid_cell_end,
         N, vr, md, r1, r2, r3, grid_size,
-        mouseX, mouseY, mouse_pressed);
+        mouseX, mouseY, mouse_pressed, group_by_species);
     cudaDeviceSynchronize();
 
 
