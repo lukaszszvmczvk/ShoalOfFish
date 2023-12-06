@@ -221,11 +221,13 @@ __global__ void copy_fishes_kernel(Fish* fishes, float* vertices, unsigned int N
     float centerX = fish.x;
     float centerY = fish.y;
 
-    float sideLength = fish.species.size;
+    float sideLength = fish.species.size/2;
 
-    glm::vec2 A = glm::vec2(centerX, centerY + sideLength / 1.73);
-    glm::vec2 B = glm::vec2(centerX - sideLength / 2, centerY - sideLength / (2 * 1.73));
-    glm::vec2 C = glm::vec2(centerX + sideLength / 2, centerY - sideLength / (2 * 1.73));
+    float directionAngle = atan2(fish.dy, fish.dx);
+
+    glm::vec2 A = glm::vec2(centerX + sideLength * cos(directionAngle), centerY + sideLength * sin(directionAngle));
+    glm::vec2 B = glm::vec2(centerX + sideLength * cos(directionAngle + 2 * 3.14 / 3), centerY + sideLength * sin(directionAngle + 2 * 3.14 / 3));
+    glm::vec2 C = glm::vec2(centerX + sideLength * cos(directionAngle - 2 * 3.14 / 3), centerY + sideLength * sin(directionAngle - 2 * 3.14 / 3));
 
     vertices[i * 3 * 5] = A.x;
     vertices[i * 3 * 5 + 1] = A.y;

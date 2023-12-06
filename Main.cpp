@@ -20,7 +20,7 @@
 #define WINDOW_HEIGHT 900
 
 // Fish count
-#define N 500
+#define N 1000
 
 // OpenGL variables
 GLFWwindow* window = nullptr;
