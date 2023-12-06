@@ -25,7 +25,8 @@ float* vertices_array_gpu = nullptr;
 
 // Compute velocity kernel function
 __global__ void compute_vel(Fish* fishes, glm::vec2* vel2, unsigned int* grid_cell_indices, int* grid_cell_start, int* grid_cell_end,
-    unsigned int N, float visualRange, float minDistance, float cohesion_scale, float separation_scale, float alignment_scale, unsigned int grid_size)
+    unsigned int N, float visualRange, float minDistance, float cohesion_scale, float separation_scale, float alignment_scale, unsigned int grid_size,
+    double mouseX, double mouseY, bool mouse_pressed)
 {
     const auto index = threadIdx.x + (blockIdx.x * blockDim.x);
     if (index >= N) { return; }
@@ -47,7 +48,8 @@ __global__ void compute_vel(Fish* fishes, glm::vec2* vel2, unsigned int* grid_ce
     int row_cells = width / (2 * visualRange) + 1;
     int neighbour_cells[] = {cell_index, cell_index + 1, cell_index - 1, cell_index + row_cells, cell_index - row_cells, cell_index - row_cells - 1,
                     cell_index - row_cells + 1, cell_index + row_cells - 1, cell_index + row_cells + 1 };
-    // Go through neighbour grids
+
+    // Go through neighbour cells
     for (int j = 0; j < 9; ++j)
     {
         int current_cell = neighbour_cells[j];
@@ -113,6 +115,24 @@ __global__ void compute_vel(Fish* fishes, glm::vec2* vel2, unsigned int* grid_ce
     if (fishes[index].y > height - margin)
         dy -= turn_factor;
 
+    // avoid coursor if mouse pressed
+    if (mouse_pressed)
+    {
+        double x_diff = mouseX - fishes[index].x;
+        double y_diff = mouseY - fishes[index].y;
+        if (x_diff < margin && x_diff > -margin && y_diff < margin && y_diff > -margin)
+        {
+            if (x_diff < margin && x_diff >= 0)
+                dx -= turn_factor;
+            if (y_diff > - margin && y_diff < 0)
+                dy += turn_factor;
+            if (x_diff > - margin && x_diff < 0)
+                dx += turn_factor;
+            if (y_diff < margin && y_diff >= 0)
+                dy -= turn_factor;
+        }
+    }
+
     // check if speed is < max_speed
     float speed = glm::sqrt(dx * dx + dy * dy);
     if (speed > max_speed)
@@ -127,13 +147,21 @@ __global__ void compute_vel(Fish* fishes, glm::vec2* vel2, unsigned int* grid_ce
 }
 
 // Update pos and velocity kernel function
-__global__ void update_pos_vel(Fish* fishes, glm::vec2* vel, unsigned int N, float dt)
+__global__ void update_pos_vel(Fish* fishes, glm::vec2* vel, unsigned int N, float speed_scale)
 {
     const auto index = threadIdx.x + (blockIdx.x * blockDim.x);
     if (index >= N) { return; }
 
-    fishes[index].x += vel[index].x * dt;
-    fishes[index].y += vel[index].y * dt;
+    fishes[index].x += vel[index].x * speed_scale;
+    fishes[index].y += vel[index].y * speed_scale;
+    if (fishes[index].x < 0)
+        fishes[index].x = 0;
+    if (fishes[index].x > width)
+        fishes[index].x = width;
+    if (fishes[index].y < 0)
+        fishes[index].y = 0;
+    if (fishes[index].y > height)
+        fishes[index].y = height;
     fishes[index].dx = vel[index].x;
     fishes[index].dy = vel[index].y;
 }
@@ -181,6 +209,7 @@ __global__ void compute_start_end_cell(unsigned int* grid_cell_indices, int* gri
     }
 }
 
+// Copy new vertices to array
 __global__ void copy_fishes_kernel(Fish* fishes, float* vertices, unsigned int N)
 {
     const auto i = threadIdx.x + (blockIdx.x * blockDim.x);
@@ -211,7 +240,7 @@ __global__ void copy_fishes_kernel(Fish* fishes, float* vertices, unsigned int N
 }
 
 // Allocate needed memory
-void Boids::init_simulation(unsigned int N)
+void CudaFunctions::initialize_simulation(unsigned int N)
 {
     cudaError_t cudaStatus;
 
@@ -247,8 +276,8 @@ void Boids::init_simulation(unsigned int N)
 
     cudaDeviceSynchronize();
 }
-// Dellocate memory
-void Boids::end_simulation()
+// Deallocate memory
+void CudaFunctions::end_simulation()
 {
     cudaFree(velocity_buffer);
     cudaFree(indices);
@@ -258,7 +287,7 @@ void Boids::end_simulation()
     cudaFree(vertices_array_gpu);
 }
 // Function to upddate fish pos and vel
-void Boids::update_fishes(Fish* fishes, unsigned int N, float vr, float md, float r1, float r2, float r3, float dt)
+void CudaFunctions::update_fishes(Fish* fishes, unsigned int N, float vr, float md, float r1, float r2, float r3, float speed_scale, double mouseX, double mouseY, bool mouse_pressed)
 {
     cudaError_t cudaStatus;
     
@@ -311,27 +340,28 @@ void Boids::update_fishes(Fish* fishes, unsigned int N, float vr, float md, floa
 
     // Update velocity
     compute_vel << <full_blocks_per_grid, threads_per_block >> > (fishes_gpu_sorted, velocity_buffer, grid_cell_indices, grid_cell_start, grid_cell_end,
-        N, vr, md, r1, r2, r3, grid_size);
+        N, vr, md, r1, r2, r3, grid_size,
+        mouseX, mouseY, mouse_pressed);
     cudaDeviceSynchronize();
 
 
     // Update position
-    update_pos_vel << <full_blocks_per_grid, threads_per_block >> > (fishes_gpu_sorted, velocity_buffer, N, dt);
+    update_pos_vel << <full_blocks_per_grid, threads_per_block >> > (fishes_gpu_sorted, velocity_buffer, N, speed_scale);
     cudaDeviceSynchronize();
     
 
-    // Przerzucenie pamieci na cpu
+    // Copy data to CPU
     cudaStatus = cudaMemcpy(fishes, fishes_gpu_sorted, N * sizeof(Fish), cudaMemcpyDeviceToHost);
     if (cudaStatus != cudaSuccess) {
         fprintf(stderr, "cudaMemcpy failed!");
     }
 
-    // Zwolnienie pamiêci
+    // Free memory
     cudaFree(grid_cell_start);
     cudaFree(grid_cell_end);
 }
-
-void Boids::copy_fishes(Fish* fishes, float* vertices_array, unsigned int N)
+// Copy fishes to VBO
+void CudaFunctions::copy_fishes(Fish* fishes, float* vertices_array, unsigned int N)
 {
     cudaError_t cudaStatus;
 
@@ -351,7 +381,7 @@ void Boids::copy_fishes(Fish* fishes, float* vertices_array, unsigned int N)
     copy_fishes_kernel << <full_blocks_per_grid, threads_per_block >> > (fishes_gpu, vertices_array_gpu, N);
     cudaDeviceSynchronize();
 
-    // Przerzucenie pamieci na cpu
+    // Copy data to CPU
     cudaStatus = cudaMemcpy(vertices_array, vertices_array_gpu, 15 * N * sizeof(float), cudaMemcpyDeviceToHost);
     if (cudaStatus != cudaSuccess) {
         fprintf(stderr, "cudaMemcpy failed!");

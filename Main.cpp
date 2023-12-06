@@ -15,10 +15,12 @@
 #include <imgui_impl_opengl3.h>
 #include <chrono>
 
+// Window size (if changed, the change is also needed in kernel.cu in width and height)
 #define WINDOW_WIDTH 1600
 #define WINDOW_HEIGHT 900
-#define N 200
 
+// Fish count
+#define N 1000
 
 // OpenGL variables
 GLFWwindow* window = nullptr;
@@ -28,6 +30,35 @@ Shader shaderProgram;
 // Fishes info
 Fish fishes[N];
 
+// Mouse press coords
+double mouseX = 0;
+double mouseY = 0;
+bool mouse_pressed = false;
+
+// Mouse events to avoid coursor when pressed
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+	{
+		double xpos, ypos;
+		glfwGetCursorPos(window, &xpos, &ypos);
+		mouseX = xpos;
+		mouseY = WINDOW_HEIGHT - ypos;
+		mouse_pressed = true;
+	}
+	else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
+	{
+		mouse_pressed = false;
+	}
+}
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) 
+{
+	if (mouse_pressed)
+	{
+		mouseX = xpos;
+		mouseY = WINDOW_HEIGHT - ypos;
+	}
+}
 // Initialzie fishes in random positions
 void init_fishes()
 {
@@ -50,13 +81,18 @@ void init_fishes()
 			{
 				fishes[i].species.color = glm::vec3(0, 0.7f, 0);
 				fishes[i].species.size = 10.f;
+				fishes[i].species.id = 0;
 			}
 			else if (i % 3 == 1)
 			{
 				fishes[i].species.color = glm::vec3(0, 0, 1);
 				fishes[i].species.size = 20.f;
+				fishes[i].species.id = 1;
 			}
-
+			else
+			{
+				fishes[i].species.id = 2;
+			}
 			if (x_rand == 0)
 				fishes[i].dx = x_vel;
 			else
@@ -110,6 +146,9 @@ bool initialize()
 		return false;
 	}
 
+	glfwSetMouseButtonCallback(window, mouse_button_callback);
+	glfwSetCursorPosCallback(window, cursor_position_callback);
+
 	// Introduce the window into the current context
 	glfwMakeContextCurrent(window);
 
@@ -130,7 +169,7 @@ bool initialize()
 	ImGui_ImplOpenGL3_Init("#version 330");
 
 	init_fishes();
-	Boids::init_simulation(N);
+	CudaFunctions::initialize_simulation(N);
 
 	return true;
 }
@@ -181,7 +220,7 @@ void update_fishes()
 {
 	float vertices[3 * 5 * N];
 
-	Boids::copy_fishes(fishes, vertices, N);
+	CudaFunctions::copy_fishes(fishes, vertices, N);
 
 	glBindVertexArray(VAO);
 
@@ -192,9 +231,9 @@ void update_fishes()
 	glBindVertexArray(0);
 }
 // Run functions to update fishes
-void update_fish(float vr, float md, float r1, float r2, float r3, float dt)
+void update_fish(float vr, float md, float r1, float r2, float r3, float speed_scale)
 {
-	Boids::update_fishes(fishes, N, vr, md, r1, r2, r3, dt);
+	CudaFunctions::update_fishes(fishes, N, vr, md, r1, r2, r3, speed_scale, mouseX, mouseY, mouse_pressed);
 	update_fishes();
 }
 // Draw fishes on screen
@@ -213,7 +252,7 @@ void program_loop()
 	float cohesion_scale = 0.001f;
 	float separation_scale = 0.05f;
 	float alignment_scale = 0.05f;
-	float dt = 0.7f;
+	float speed_scale = 0.1f;
 
 	setup_fishes();
 
@@ -236,7 +275,7 @@ void program_loop()
 		glClear(GL_COLOR_BUFFER_BIT);
 
 
-		update_fish(visualRange, minDistance, cohesion_scale, separation_scale, alignment_scale, dt);
+		update_fish(visualRange, minDistance, cohesion_scale, separation_scale, alignment_scale, speed_scale);
 		draw_fishes();
 
 
@@ -246,7 +285,7 @@ void program_loop()
 		ImGui::SliderFloat("Cohesion rule scale", &cohesion_scale, 0.0f, 0.1f);
 		ImGui::SliderFloat("Separation rule scale", &separation_scale, 0.0f, 0.1f);
 		ImGui::SliderFloat("Alignment rule scale", &alignment_scale, 0.0f, 0.1f);
-		ImGui::SliderFloat("Speed scale", &dt, 0.1f, 1.f);
+		ImGui::SliderFloat("Speed scale", &speed_scale, 0.1f, 0.5f);
 
 		ImGui::End();
 
@@ -273,7 +312,7 @@ void program_loop()
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
-	Boids::end_simulation();
+	CudaFunctions::end_simulation();
 
 	// Delete window before ending the program
 	glfwDestroyWindow(window);

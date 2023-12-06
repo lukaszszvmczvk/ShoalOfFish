@@ -6,17 +6,20 @@
 struct Species
 {
 public:
+	int id;
 	float size;
 	glm::vec3 color;
-	Species(float size, glm::vec3 color)
+	Species(float size, glm::vec3 color, int id)
 	{
 		this->size = size;
 		this->color = color;
+		this->id = id;
 	}
 	Species()
 	{
 		size = 15;
 		color = glm::vec3(1.0f, 0, 0);
+		id = 0;
 	}
 };
 
