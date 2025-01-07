@@ -17,4 +17,3 @@ By updating these rules in parallel for all fish using **CUDA kernels**, the sim
 ## 🛠️ Tech Stack
 - **Language**: C
 - **GPU Framework**: CUDA
-- **Algorithm**: Boid Algorithm (with physics-based enhancements)
