@@ -21,6 +21,5 @@ By updating these rules in parallel for all fish using **CUDA kernels**, the sim
 ---
 
 ## Presentation
-**The impression of a low frame rate is due to the recording method.**
 
 ![](example.gif)
