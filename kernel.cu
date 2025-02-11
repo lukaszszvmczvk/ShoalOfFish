@@ -7,7 +7,8 @@
 
 // Const variables
 constexpr unsigned int block_size = 256;
-constexpr float max_speed = 10.0f;
+constexpr float max_speed = 8.0f;
+constexpr float min_speed = 4.0f;
 constexpr float turn_factor = 2.f;
 constexpr float height = 900.f;
 constexpr float width = 1600.f;
@@ -141,6 +142,11 @@ __global__ void compute_vel(Fish* fishes, glm::vec2* vel2, unsigned int* grid_ce
     {
         dx = (dx / speed) * max_speed;
         dy = (dy / speed) * max_speed;
+    }
+    else if (speed < min_speed)
+    {
+        dx = (dx / speed) * min_speed;
+        dy = (dy / speed) * min_speed;
     }
 
     // update velocities

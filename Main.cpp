@@ -20,7 +20,7 @@
 #define WINDOW_HEIGHT 900
 
 // Fish count
-#define N 1000
+#define N 250
 
 // OpenGL variables
 GLFWwindow* window = nullptr;
@@ -247,8 +247,8 @@ void draw_fishes()
 void program_loop()
 {
 	// Initalize basic values
-	float visualRange = 35.f;
-	float minDistance = 20.f;
+	float visualRange = 40.f;
+	float minDistance = 10.f;
 	float cohesion_scale = 0.001f;
 	float separation_scale = 0.05f;
 	float alignment_scale = 0.05f;
@@ -281,10 +281,10 @@ void program_loop()
 
 
 		ImGui::Begin("Set properties");
-		ImGui::Text("Liczba rybek %d", N);
+		ImGui::Text("Number of fishes %d", N);
 		ImGui::SliderFloat("Visual range of fish", &visualRange, 5.0f, 100.0f);
-		ImGui::SliderFloat("Min. separation distance", &minDistance, 0.0f, 50.0f);
-		ImGui::SliderFloat("Cohesion rule scale", &cohesion_scale, 0.0f, 0.1f);
+		ImGui::SliderFloat("Min. separation distance", &minDistance, 0.0f, 30.0f);
+		ImGui::SliderFloat("Cohesion rule scale", &cohesion_scale, 0.0f, 0.005f);
 		ImGui::SliderFloat("Separation rule scale", &separation_scale, 0.0f, 0.1f);
 		ImGui::SliderFloat("Alignment rule scale", &alignment_scale, 0.0f, 0.1f);
 		ImGui::SliderFloat("Speed scale", &speed_scale, 0.1f, 0.5f);
