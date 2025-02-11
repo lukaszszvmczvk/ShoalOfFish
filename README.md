@@ -1,6 +1,6 @@
-# 🐟 ShoalOfFish
+# ShoalOfFish
 
-**ShoalOfFish** is a GPU-accelerated simulation of a fish school using the **Boid Algorithm**. The project demonstrates how **parallel computing with CUDA** can efficiently simulate the complex flocking behavior of fish by applying the three core rules of the Boid Algorithm: **separation, alignment, and cohesion**.
+**ShoalOfFish** is a GPU-accelerated simulation of a fish school using the **Boid Algorithm**. The project demonstrates how **parallel computing with CUDA** can efficiently simulate the complex flocking behavior of fish by applying the three core rules of the Boid Algorithm: **separation, alignment, and cohesion**. It's also extended by a feature where the fish avoid the cursor.
 
 ---
 
@@ -14,6 +14,13 @@ By updating these rules in parallel for all fish using **CUDA kernels**, the sim
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 - **Language**: C++
 - **GPU Framework**: CUDA
+
+---
+
+## Presentation
+**The impression of a low frame rate is due to the recording method.**
+
+![](example.gif)
